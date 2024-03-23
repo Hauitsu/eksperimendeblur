@@ -118,6 +118,10 @@ class PairedDataset(Dataset):
     def from_config(config):
         config = deepcopy(config)
         files_a, files_b = map(lambda x: sorted(glob(config[x], recursive=True)), ('files_a', 'files_b'))
+        # print("---")
+        # print(config.get('files_a'))
+        # print(files_a)
+        # print("---")
         transform_fn = aug.get_transforms(size=config['size'], scope=config['scope'], crop=config['crop'])
         normalize_fn = aug.get_normalize()
         corrupt_fn = aug.get_corrupt_function(config['corrupt'])

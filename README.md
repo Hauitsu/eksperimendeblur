@@ -1,5 +1,3 @@
-Eksperimen deblur Tugas Akhir
-
 # Using deblurv2 GAN on custom dataset
 
 **Dataset preparation**

@@ -5,6 +5,8 @@ from functools import partial
 import cv2
 import torch
 import torch.optim as optim
+# import tqdm.auto as tqdm
+# import tqdm.autonotebook as tqdm
 import tqdm
 import yaml
 from joblib import cpu_count
@@ -22,6 +24,14 @@ import ssl
 ssl._create_default_https_context = ssl._create_unverified_context
 
 cv2.setNumThreads(0)
+
+from niapy.problems import Problem
+from niapy.task import OptimizationType, Task
+# from niapy.algorithms.modified import HybridBatAlgorithm
+from niapy.algorithms.basic import ClonalSelectionAlgorithm, GeneticAlgorithm
+from niapy.algorithms.other import AnarchicSocietyOptimization, HillClimbAlgorithm
+from datetime import datetime
+import numpy as np
 
 
 class Trainer:
@@ -62,8 +72,8 @@ class Trainer:
             lr = param_group['lr']
 
         epoch_size = self.config.get('train_batches_per_epoch') or len(self.train_dataset)
-        tq = tqdm.tqdm(self.train_dataset, total=epoch_size)
-        tq.set_description('Epoch {}, lr {}'.format(epoch, lr))
+        tq = tqdm.tqdm(self.train_dataset, total=epoch_size, position=0, leave=True)
+        tq.set_description('Epoch {}, lr {}'.format(epoch, lr), refresh=True)
         i = 0
         for data in tq:
             inputs, targets = self.model.get_input(data)
@@ -171,10 +181,42 @@ class Trainer:
         self.scheduler_G = self._get_scheduler(self.optimizer_G)
         self.scheduler_D = self._get_scheduler(self.optimizer_D)
 
+class GANHyperparameterOptimization(Problem):
+    def __init__(self, X_train, y_train, config):
+        super().__init__(dimension=2, lower=0, upper=1)
+        self.X_train = X_train
+        self.y_train = y_train
+        self.config = config
+        self.population_size = config['population_size']
+        self.iter = 0
+        self.eval = 0
 
-def main(config_path='config/config.yaml'):
+    def _evaluate(self, x):
+        if self.eval != 0 and self.eval % self.population_size == 0:
+            self.iter += 1
+        self.eval += 1
+        blocks = int(5 + x[0] * 10) # random 5 to 15
+        d_layers = int(1 + x[1] * 9) # random 1 to 10
+        self.config['model']['blocks'] = blocks
+        self.config['model']['d_layers'] = d_layers
+        print('---------------------------------------')
+        if self.iter == 0:
+            print('initialization')
+        else:
+            print('iteration', self.iter)
+        print('individu', self.eval, '| blocks =', blocks, '| d_layers =', d_layers)
+        print('x =',x)
+        print('')
+        trainer = Trainer(self.config, train=self.X_train, val=self.y_train)
+        trainer.train()
+        score = trainer.metric_counter.best_metric
+        print('Fitness score =', score, '(PSNR-mean)')
+        return score
+
+def main(method, config_path='config/config.yaml'): 
     with open(config_path, 'r',encoding='utf-8') as f:
         config = yaml.load(f, Loader=yaml.SafeLoader)
+    
 
     batch_size = config.pop('batch_size')
     # get_dataloader = partial(DataLoader,
@@ -182,14 +224,39 @@ def main(config_path='config/config.yaml'):
     #                          num_workers=0 if os.environ.get('DEBUG') else cpu_count(),
     #                          shuffle=True, drop_last=True)
     get_dataloader = partial(DataLoader,
-                             batch_size=batch_size,
-                             shuffle=True, drop_last=True)
+                            batch_size=batch_size,
+                            shuffle=True, drop_last=True)
 
     datasets = map(config.pop, ('train', 'val'))
     datasets = map(PairedDataset.from_config, datasets)
     train, val = map(get_dataloader, datasets)
-    trainer = Trainer(config, train=train, val=val)
-    trainer.train()
+    if method: # Modified code
+        start_time = datetime.now()
+        print("Running auto hyperparameter using:",method)
+        problem = GANHyperparameterOptimization(train,val,config)
+
+        # task = Task(problem, max_iters=10, max_evals=10, optimization_type=OptimizationType.MAXIMIZATION)
+        task = Task(problem, max_iters=1, optimization_type=OptimizationType.MAXIMIZATION)
+        
+        # algorithm = HybridBatAlgorithm(population_size=10, seed=1234)
+        algorithm = eval(method+'(population_size='+str(config.pop('population_size'))+', seed=1234)')
+
+        best_params, best_accuracy = algorithm.run(task)
+        best_blocks = int(5 + best_params[0] * 10) 
+        best_d_layers = int(1 + best_params[1] * 9)
+        end_time = datetime.now()
+        duration = end_time - start_time
+        print('-----------------')
+        print(method)
+        print("Total duration:", duration)
+        print('Best parameters:', 'blocks =', best_blocks, '& d_layers =', best_d_layers)
+        print('Best accuracy:', best_accuracy, '(PSNR-mean)')
+        print('--------------------------------------------------')
+        
+    else:
+        trainer = Trainer(config, train=train, val=val)
+        trainer.train()
+
 
 
 if __name__ == '__main__':
