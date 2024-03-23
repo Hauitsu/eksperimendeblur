@@ -1,11 +1,9 @@
-<<<<<<< HEAD
 =======
-Eksperimen deblur Tugas Akhir
+# Eksperimen deblur Tugas Akhir
 
 referensi: https://github.com/ajithvcoder/DeblurGANv2_Customdataset
 
->>>>>>> 1a120c3c9d32fb4602b583a85ba09ec92a16989a
-# Using deblurv2 GAN on custom dataset
+ Using deblurv2 GAN on custom dataset
 
 **Dataset preparation**
 
