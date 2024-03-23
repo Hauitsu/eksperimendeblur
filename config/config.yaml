@@ -5,8 +5,8 @@ experiment_desc: fpn
 train:
 #  files_a: &FILES_A /datasets/my_dataset/**/*.jpg
   #Absolutepath can be used
-  files_a: &FILES_A /content/Licenseplate_blur_clear_dataset/train/blur/*.jpg
-  files_b: &FILES_B /content/Licenseplate_blur_clear_dataset/train/sharp/*.jpg
+  files_a: &FILES_A Z:\ML\Projects\content\Licenseplate_blur_clear_dataset\train\blur\*.jpg
+  files_b: &FILES_B Z:\ML\Projects\content\Licenseplate_blur_clear_dataset\train\sharp\*.jpg
 #  files_a: &FILES_A ./dataset1/blur/*.png
 #  files_b: &FILES_B ./dataset1/sharp/*.png
   size: &SIZE 256
@@ -32,8 +32,8 @@ train:
     - name: sharpen
 
 val:
-  files_a: &FILES_C /content/Licenseplate_blur_clear_dataset/valid/blur/*.jpg
-  files_b: &FILES_D /content/Licenseplate_blur_clear_dataset/valid/sharp/*.jpg
+  files_a: &FILES_C Z:\ML\Projects\content\Licenseplate_blur_clear_dataset\train\blur\*.jpg
+  files_b: &FILES_D Z:\ML\Projects\content\Licenseplate_blur_clear_dataset\train\blur\*.jpg
 #  files_a: &FILES_A
 #  files_b: &FILES_B
   size: *SIZE
@@ -58,10 +58,12 @@ model:
   norm_layer: instance
   dropout: True
 
-num_epochs: 20
-train_batches_per_epoch: 102
-val_batches_per_epoch: 100
-batch_size: 16
+population_size: 5
+
+num_epochs: 5 # default 20
+train_batches_per_epoch: 1 # default 102 - RAM usage is reduced by 2GB
+val_batches_per_epoch: 1 #default 100
+batch_size: 4 # default 16 - RAM usage is reduced from 16GB to 4GB
 image_size: [256, 256]
 
 optimizer:
@@ -69,5 +71,5 @@ optimizer:
   lr: 0.01
 scheduler:
   name: linear
-  start_epoch: 20
+  start_epoch: 5 # default 20
   min_lr: 0.0000001
